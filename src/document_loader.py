@@ -1,4 +1,11 @@
-from langchain_core.documents import Document
+try:
+    from langchain_core.documents import Document
+except ImportError:
+    class Document:
+        """Lightweight fallback Document container when langchain is not installed."""
+        def __init__(self, page_content: str, metadata: dict = None):
+            self.page_content = page_content
+            self.metadata = metadata or {}
 
 
 def convert_search_results_to_documents(results):

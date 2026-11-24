@@ -1,6 +1,11 @@
 import os
 from dotenv import load_dotenv
 
+# Optimize memory allocation for cloud instances (e.g. Render 512MB RAM)
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MALLOC_ARENA_MAX", "2")
+
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

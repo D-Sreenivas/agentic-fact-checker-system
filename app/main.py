@@ -31,14 +31,20 @@ agent_instance: Optional[FactCheckingAgent] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan event handler to preload models on startup."""
+    """Lifespan event handler."""
     global agent_instance
-    print("[FASTAPI STARTUP] Preloading FactCheckingAgent & neural models...")
-    try:
-        agent_instance = await asyncio.to_thread(FactCheckingAgent)
-        print("[FASTAPI STARTUP] FactCheckingAgent loaded successfully!")
-    except Exception as e:
-        print(f"[FASTAPI STARTUP WARNING] Failed to preload agent: {e}")
+    # On resource-constrained environments (like Render Free 512MB),
+    # lazy loading ensures the server boots and binds port instantly without OOM.
+    preload = os.getenv("PRELOAD_MODELS", "false").lower() in ("true", "1")
+    if preload:
+        print("[FASTAPI STARTUP] Preloading FactCheckingAgent & neural models...")
+        try:
+            agent_instance = await asyncio.to_thread(FactCheckingAgent)
+            print("[FASTAPI STARTUP] FactCheckingAgent loaded successfully!")
+        except Exception as e:
+            print(f"[FASTAPI STARTUP WARNING] Failed to preload agent: {e}")
+    else:
+        print("[FASTAPI STARTUP] Lazy loading enabled. Models will load on first request.")
     yield
     print("[FASTAPI SHUTDOWN] Shutting down agent service...")
 

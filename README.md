@@ -9,7 +9,7 @@ An enterprise-ready agentic AI pipeline that verifies claims using real-time web
 1. **Web Search**: Real-time querying via DuckDuckGo Search (`ddgs`) to collect up-to-date sources.
 2. **Dense Semantic Retrieval**: Vector embeddings generated with `sentence-transformers/all-MiniLM-L6-v2` to select candidate documents.
 3. **Cross-Encoder Reranking**: Re-evaluates query-document pairs using `cross-encoder/ms-marco-MiniLM-L-6-v2` for precise relevance scoring.
-4. **LLM Reasoning**: Google Gemini (`gemini-2.5-flash` / `gemini-flash-latest`) synthesizes evidence to produce a verdict (`SUPPORTED`, `REFUTED`, `UNCERTAIN`), confidence score, and citations.
+4. **LLM Reasoning**: Google Gemini (`gemini-3.8-flash` / `gemini-flash-latest`) synthesizes evidence to produce a verdict (`SUPPORTED`, `REFUTED`, `UNCERTAIN`), confidence score, and citations.
 
 ---
 
@@ -21,7 +21,7 @@ Ensure your `.env` file contains your Gemini API key:
 
 ```env
 GEMINI_API_KEY=your_api_key_here
-LLM_MODEL=gemini-2.5-flash
+LLM_MODEL=gemini-3.8-flash
 ```
 
 Install dependencies:
@@ -37,7 +37,7 @@ Install dependencies:
 Run the FastAPI server with Uvicorn:
 
 ```powershell
-.\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+.\venv\Scrip-ts\python.exe m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 - **Interactive Web Dashboard:** [http://127.0.0.1:8000](http://127.0.0.1:8000)
