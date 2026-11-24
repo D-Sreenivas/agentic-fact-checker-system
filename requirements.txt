@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+google-genai
+langchain
+langchain-community
+langchain-core
+sentence-transformers
+faiss-cpu
+beautifulsoup4
+requests
+python-dotenv
+streamlit
+ddgs
+pandas
+scikit-learn

@@ -1,0 +1,102 @@
+# =====================================================================
+# Gitignore for Agentic Fact-Checking System (agentic_fact_checker)
+# =====================================================================
+
+# --- Environment & Secret Configuration ---
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# --- Python & Virtual Environments ---
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# --- Model Artifacts, Caches & Vector Stores ---
+# Vector databases (FAISS indices, pickled stores)
+vectorstore/
+*.faiss
+*.pkl
+*.index
+
+# Hugging Face / PyTorch / Transformers model cache
+.cache/
+hf_cache/
+transformers_cache/
+torch_cache/
+
+# --- Streamlit & Web Frameworks ---
+.streamlit/secrets.toml
+app/static/uploads/
+
+# --- Logs & Databases ---
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+
+# --- Testing & Coverage ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# --- Distribution / Packaging ---
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- IDE & Editor Settings ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# --- Operating System Files ---
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Temporary & Scratch Files ---
+tmp/
+temp/
+scratch/

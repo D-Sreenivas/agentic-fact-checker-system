@@ -1,0 +1,4 @@
+Title: Boiling Point of Water
+Topic: Science
+
+At standard atmospheric pressure of one atmosphere, pure water boils at approximately 100 degrees Celsius. The boiling point changes with atmospheric pressure, so water boils at a lower temperature at higher elevations.

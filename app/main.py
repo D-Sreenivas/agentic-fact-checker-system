@@ -1,0 +1,256 @@
+import asyncio
+import os
+import sys
+import time
+from contextlib import asynccontextmanager
+from typing import List, Optional
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+# Ensure project root is in sys.path
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+from src.agent import FactCheckingAgent
+from src.config import (
+    EMBEDDING_MODEL,
+    LLM_MODEL,
+    RERANKER_MODEL,
+    TOP_K_RERANK,
+    TOP_K_RETRIEVAL,
+)
+
+# Global agent instance
+agent_instance: Optional[FactCheckingAgent] = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler to preload models on startup."""
+    global agent_instance
+    print("[FASTAPI STARTUP] Preloading FactCheckingAgent & neural models...")
+    try:
+        agent_instance = await asyncio.to_thread(FactCheckingAgent)
+        print("[FASTAPI STARTUP] FactCheckingAgent loaded successfully!")
+    except Exception as e:
+        print(f"[FASTAPI STARTUP WARNING] Failed to preload agent: {e}")
+    yield
+    print("[FASTAPI SHUTDOWN] Shutting down agent service...")
+
+
+app = FastAPI(
+    title="Agentic Fact-Checker API",
+    description="Production-grade AI pipeline for multi-stage claim verification using Web Retrieval, Neural Reranking, and Gemini.",
+    version="2.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+# Enable CORS for external frontends or integrations
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Static files directory
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+# ---------------------------------------------------------
+# Pydantic Request & Response Schemas
+# ---------------------------------------------------------
+
+class FactCheckRequest(BaseModel):
+    claim: str = Field(
+        ...,
+        min_length=3,
+        max_length=1500,
+        description="The statement or factual claim to verify.",
+        example="The Eiffel Tower is located in Paris, France.",
+    )
+    top_k_retrieval: Optional[int] = Field(
+        default=TOP_K_RETRIEVAL,
+        ge=1,
+        le=20,
+        description="Number of candidate web search documents to retrieve.",
+    )
+    top_k_rerank: Optional[int] = Field(
+        default=TOP_K_RERANK,
+        ge=1,
+        le=10,
+        description="Number of top reranked documents to feed into Gemini.",
+    )
+
+
+class EvidenceItem(BaseModel):
+    title: str
+    url: str
+    score: float
+    content: str
+
+
+class FactCheckResponse(BaseModel):
+    claim: str
+    verdict: str
+    confidence: int
+    explanation: str
+    evidence_used: str
+    citations: List[str]
+    evidence: List[EvidenceItem]
+    raw_result: str
+    execution_time_seconds: float
+
+
+class HealthResponse(BaseModel):
+    status: str
+    embedding_model: str
+    reranker_model: str
+    llm_model: str
+    agent_loaded: bool
+
+
+class ExampleClaim(BaseModel):
+    id: str
+    claim: str
+    category: str
+    expected_verdict: str
+
+
+# ---------------------------------------------------------
+# API Endpoints
+# ---------------------------------------------------------
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def serve_ui():
+    """Serves the interactive web interface."""
+    index_file = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse("<h1>Agentic Fact Checker API</h1><p>Visit <a href='/docs'>/docs</a> for Swagger API.</p>")
+
+
+@app.get("/api/health", response_model=HealthResponse, tags=["System"])
+async def health_check():
+    """Returns the operational status and active model configurations."""
+    return HealthResponse(
+        status="operational",
+        embedding_model=EMBEDDING_MODEL,
+        reranker_model=RERANKER_MODEL,
+        llm_model=LLM_MODEL,
+        agent_loaded=agent_instance is not None,
+    )
+
+
+@app.get("/api/examples", response_model=List[ExampleClaim], tags=["Examples"])
+async def get_examples():
+    """Returns curated example claims to test the pipeline."""
+    return [
+        ExampleClaim(
+            id="ex_1",
+            claim="Australia won the 2023 ICC Men's Cricket World Cup.",
+            category="Sports",
+            expected_verdict="SUPPORTED",
+        ),
+        ExampleClaim(
+            id="ex_2",
+            claim="The Eiffel Tower is located in Paris, France.",
+            category="Geography",
+            expected_verdict="SUPPORTED",
+        ),
+        ExampleClaim(
+            id="ex_3",
+            claim="India won the 2023 Men's Cricket World Cup final.",
+            category="Sports",
+            expected_verdict="REFUTED",
+        ),
+        ExampleClaim(
+            id="ex_4",
+            claim="Humans landed on Mars in 2020.",
+            category="Science & Space",
+            expected_verdict="REFUTED",
+        ),
+        ExampleClaim(
+            id="ex_5",
+            claim="NASA has officially confirmed the discovery of extraterrestrial civilizations.",
+            category="Speculation",
+            expected_verdict="UNCERTAIN",
+        ),
+    ]
+
+
+@app.post("/api/verify", response_model=FactCheckResponse, tags=["Verification"])
+async def verify_claim(payload: FactCheckRequest):
+    """
+    Executes the multi-stage agentic verification pipeline:
+    1. Real-time Web Search (DDGS)
+    2. Dense Semantic Retrieval (SentenceTransformers)
+    3. Cross-Encoder Reranking
+    4. Gemini LLM Reasoning & Synthesis
+    """
+    global agent_instance
+
+    claim_text = payload.claim.strip()
+    if not claim_text:
+        raise HTTPException(status_code=400, detail="Claim cannot be empty.")
+
+    # Lazy-load agent if startup didn't complete it
+    if agent_instance is None:
+        try:
+            agent_instance = await asyncio.to_thread(FactCheckingAgent)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to initialize agent: {e}")
+
+    start_time = time.time()
+
+    try:
+        # Run agent in background thread to avoid blocking FastAPI event loop
+        result = await asyncio.to_thread(
+            agent_instance.run,
+            claim_text,
+            payload.top_k_retrieval,
+            payload.top_k_rerank,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error executing verification pipeline: {str(e)}")
+
+    elapsed = round(time.time() - start_time, 2)
+
+    # Format evidence items
+    evidence_items = []
+    for item in result.get("structured_evidence", []):
+        evidence_items.append(
+            EvidenceItem(
+                title=item.get("title", "Untitled Source"),
+                url=item.get("url", "#"),
+                score=item.get("score", 0.0),
+                content=item.get("content", ""),
+            )
+        )
+
+    return FactCheckResponse(
+        claim=result.get("claim", claim_text),
+        verdict=result.get("verdict", "UNCERTAIN"),
+        confidence=result.get("confidence", 0),
+        explanation=result.get("explanation", ""),
+        evidence_used=result.get("evidence_used", ""),
+        citations=result.get("citations", []),
+        evidence=evidence_items,
+        raw_result=result.get("result", ""),
+        execution_time_seconds=elapsed,
+    )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)

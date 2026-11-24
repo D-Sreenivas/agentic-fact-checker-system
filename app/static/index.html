@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic Fact-Checker | Multi-Stage AI Verification</title>
+    <meta name="description" content="AI pipeline for real-time claim verification using Web Retrieval, Neural Reranking, and Google Gemini.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <header class="app-header">
+        <div class="container header-container">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.3-4.3"></path>
+                        <path d="M11 8v6"></path>
+                        <path d="M8 11h6"></path>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">FactCheck<span class="accent-text">AI</span></span>
+                    <span class="brand-tag">FastAPI Edition</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="status-indicator" id="systemStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-label">FastAPI Ready</span>
+                </div>
+                <a href="/docs" target="_blank" class="nav-link-btn" title="Open Swagger API documentation">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    <span>Swagger API</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <h1 class="hero-title">
+                Multi-Stage <span class="gradient-text">Agentic Fact-Checker</span>
+            </h1>
+            <p class="hero-desc">
+                High-confidence claim verification driven by live DuckDuckGo retrieval, dense vector similarity, neural cross-encoder reranking, and Google Gemini reasoning.
+            </p>
+
+            <!-- Pipeline Architecture Stepper Bar -->
+            <div class="pipeline-track">
+                <div class="step-badge" id="stepSearch">
+                    <span class="step-num">1</span>
+                    <span class="step-label">Web Search</span>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-badge" id="stepRetrieve">
+                    <span class="step-num">2</span>
+                    <span class="step-label">Dense Retrieval</span>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-badge" id="stepRerank">
+                    <span class="step-num">3</span>
+                    <span class="step-label">Neural Rerank</span>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-badge" id="stepLLM">
+                    <span class="step-num">4</span>
+                    <span class="step-label">Gemini Verdict</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Claim Input Section -->
+        <section class="card input-card">
+            <form id="verifyForm">
+                <div class="input-header">
+                    <label for="claimInput" class="input-label">Enter Claim to Verify</label>
+                    <span class="char-count" id="charCount">0 / 1500</span>
+                </div>
+
+                <div class="textarea-wrapper">
+                    <textarea 
+                        id="claimInput" 
+                        rows="3" 
+                        maxlength="1500" 
+                        placeholder="e.g. Australia won the 2023 ICC Men's Cricket World Cup." 
+                        required
+                    ></textarea>
+                </div>
+
+                <!-- Example Chips -->
+                <div class="examples-wrapper">
+                    <span class="examples-title">💡 Quick test examples:</span>
+                    <div class="examples-pills" id="examplesContainer">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
+
+                <!-- Parameters Expander -->
+                <details class="advanced-settings">
+                    <summary>⚙️ Advanced Retrieval Parameters</summary>
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label for="topKRetrieval">Candidate Documents (Top-K)</label>
+                            <input type="number" id="topKRetrieval" min="3" max="20" value="10">
+                            <span class="setting-desc">Number of web search results retrieved</span>
+                        </div>
+                        <div class="setting-item">
+                            <label for="topKRerank">Reranked Evidence (Top-N)</label>
+                            <input type="number" id="topKRerank" min="2" max="10" value="5">
+                            <span class="setting-desc">Highest scoring evidence fed to Gemini</span>
+                        </div>
+                    </div>
+                </details>
+
+                <div class="form-actions">
+                    <button type="submit" id="verifyBtn" class="primary-btn">
+                        <span class="btn-spinner" id="btnSpinner"></span>
+                        <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+                        <span id="btnText">Verify Claim with AI</span>
+                    </button>
+                    <button type="button" id="clearBtn" class="secondary-btn">Clear</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Loading State Indicator -->
+        <div class="loading-panel" id="loadingPanel" style="display: none;">
+            <div class="loading-spinner"></div>
+            <h3 class="loading-title" id="loadingStatusText">Agent is analyzing claim...</h3>
+            <p class="loading-sub" id="loadingSubText">Executing multi-stage retrieval & neural reranking</p>
+        </div>
+
+        <!-- Result Section -->
+        <section class="card result-card" id="resultCard" style="display: none;">
+            <div class="result-header">
+                <div class="verdict-banner" id="verdictBanner">
+                    <div class="verdict-icon" id="verdictIcon">✓</div>
+                    <div class="verdict-meta">
+                        <span class="verdict-caption">Verification Verdict</span>
+                        <h2 class="verdict-title" id="verdictTitle">SUPPORTED</h2>
+                    </div>
+                </div>
+
+                <div class="metrics-row">
+                    <div class="metric-box">
+                        <span class="metric-label">Confidence</span>
+                        <div class="confidence-bar-wrap">
+                            <span class="metric-value" id="confidenceValue">95%</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill" style="width: 95%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metric-box">
+                        <span class="metric-label">Processing Time</span>
+                        <span class="metric-value mono" id="executionTimeValue">1.82s</span>
+                    </div>
+
+                    <div class="metric-box">
+                        <span class="metric-label">Sources Reranked</span>
+                        <span class="metric-value mono" id="sourcesCountValue">5</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Explanation Section -->
+            <div class="result-body">
+                <div class="section-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    <span>Detailed Synthesis & Explanation</span>
+                </div>
+                <div class="explanation-box" id="explanationText"></div>
+
+                <!-- Citations Section -->
+                <div id="citationsWrapper" class="citations-section">
+                    <div class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        <span>Verified Source Citations</span>
+                    </div>
+                    <div class="citations-list" id="citationsList"></div>
+                </div>
+
+                <!-- Retrieved Evidence Cards -->
+                <div class="evidence-section">
+                    <div class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                        <span>Retrieved & Neural Reranked Evidence</span>
+                    </div>
+                    <div class="evidence-cards-container" id="evidenceContainer"></div>
+                </div>
+
+                <!-- Quick Export / View JSON -->
+                <div class="card-footer-actions">
+                    <button class="footer-btn" id="copyResultBtn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span id="copyBtnText">Copy Result</span>
+                    </button>
+                    <button class="footer-btn" id="viewJsonBtn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                        </svg>
+                        <span>Raw JSON Response</span>
+                    </button>
+                </div>
+
+                <div class="raw-json-panel" id="rawJsonPanel" style="display: none;">
+                    <pre><code id="rawJsonCode"></code></pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <div class="container footer-content">
+            <p>Agentic Fact-Checker Powered by <strong>FastAPI</strong>, <strong>SentenceTransformers</strong>, and <strong>Google Gemini</strong>.</p>
+            <div class="footer-links">
+                <a href="/docs" target="_blank">OpenAPI Docs</a>
+                <span class="sep">•</span>
+                <a href="/api/health" target="_blank">Health Status</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
