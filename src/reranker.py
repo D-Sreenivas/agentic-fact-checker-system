@@ -3,20 +3,27 @@ from src.config import RERANKER_MODEL, TOP_K_RERANK
 
 
 class Reranker:
+    """
+    Evidence Reranker:
+    - High-Memory / Local: CrossEncoder transformer for deep sequence-pair ranking.
+    - Cloud / 512MB RAM: Reuses dense semantic similarity or TF-IDF relevance scores
+      from the Retriever, incurring 0MB additional memory overhead.
+    """
 
     def __init__(self):
         self.model = None
-        # On memory-constrained cloud environments (such as Render 512MB RAM),
-        # loading two BERT models (SentenceTransformer + CrossEncoder) simultaneously
-        # triggers Linux OOM killer (causing 502 Bad Gateway).
-        # We only load CrossEncoder if NOT running in cloud or if explicit flag set.
-        is_cloud = bool(os.getenv("RENDER") or os.getenv("PORT"))
-        if not is_cloud:
+        is_cloud = bool(os.getenv("RENDER") or os.getenv("PORT") or os.getenv("LOW_MEMORY"))
+        force_transformers = os.getenv("FORCE_TRANSFORMERS", "false").lower() in ("true", "1")
+
+        if not is_cloud or force_transformers:
             try:
                 from sentence_transformers import CrossEncoder
                 self.model = CrossEncoder(RERANKER_MODEL)
+                print(f"[RERANKER] CrossEncoder model loaded: {RERANKER_MODEL}")
             except Exception as e:
-                print(f"[RERANKER NOTICE] CrossEncoder skipped: {e}")
+                print(f"[RERANKER NOTICE] CrossEncoder skipped ({e}). Reusing retriever scores.")
+        else:
+            print("[RERANKER] Cloud/low-memory mode: reusing retriever scores (0MB RAM overhead).")
 
     def rerank(self, query, retrieved_documents, top_k=TOP_K_RERANK):
         if not retrieved_documents:

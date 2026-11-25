@@ -253,10 +253,13 @@ async def serve_ui():
 @app.get("/api/health", response_model=HealthResponse, tags=["System"])
 async def health_check():
     """Returns the operational status and active model configurations."""
+    is_cloud = bool(os.getenv("RENDER") or os.getenv("PORT") or os.getenv("LOW_MEMORY"))
+    emb_model = "TF-IDF (Cloud Low-Memory Optimized)" if is_cloud else EMBEDDING_MODEL
+    rerank_model = "Retriever Relevance (Cloud Zero-Overhead)" if is_cloud else RERANKER_MODEL
     return HealthResponse(
         status="operational",
-        embedding_model=EMBEDDING_MODEL,
-        reranker_model=RERANKER_MODEL,
+        embedding_model=emb_model,
+        reranker_model=rerank_model,
         llm_model=LLM_MODEL,
         agent_loaded=agent_instance is not None,
     )
