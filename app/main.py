@@ -35,7 +35,7 @@ asyncio.AbstractEventLoop.create_server = _cloud_safe_create_server
 from contextlib import asynccontextmanager
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -248,6 +248,12 @@ async def serve_ui():
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return HTMLResponse("<h1>Agentic Fact Checker API</h1><p>Visit <a href='/docs'>/docs</a> for Swagger API.</p>")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Silence browser favicon requests."""
+    return Response(status_code=204)
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["System"])
