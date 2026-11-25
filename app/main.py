@@ -1,7 +1,37 @@
 import asyncio
 import os
+import socket
 import sys
 import time
+
+# ---------------------------------------------------------------------------
+# Cloud Deployment Adapter (Render, Heroku, etc.)
+# If running in cloud environment where PORT is provided, automatically
+# re-route any 127.0.0.1 bindings to 0.0.0.0:$PORT so Render health checks succeed
+# even if Start Command was passed with '--host 127.0.0.1 --port 8000'.
+# ---------------------------------------------------------------------------
+_orig_socket_bind = socket.socket.bind
+def _cloud_safe_bind(self, address):
+    if (os.environ.get("RENDER") or os.environ.get("PORT")) and isinstance(address, tuple) and len(address) == 2:
+        host, port = address
+        cloud_port = int(os.environ.get("PORT", port))
+        if host in ("127.0.0.1", "localhost", ""):
+            print(f"[CLOUD ADAPTER] Auto-rebinding from {host}:{port} -> 0.0.0.0:{cloud_port}")
+            address = ("0.0.0.0", cloud_port)
+    return _orig_socket_bind(self, address)
+socket.socket.bind = _cloud_safe_bind
+
+_orig_create_server = asyncio.AbstractEventLoop.create_server
+def _cloud_safe_create_server(self, protocol_factory, host=None, port=None, *args, **kwargs):
+    if os.environ.get("RENDER") or os.environ.get("PORT"):
+        cloud_port = int(os.environ.get("PORT", port if port else 8000))
+        if host in ("127.0.0.1", "localhost", None, ""):
+            print(f"[CLOUD ADAPTER] create_server: auto-rebinding from {host}:{port} -> 0.0.0.0:{cloud_port}")
+            host = "0.0.0.0"
+            port = cloud_port
+    return _orig_create_server(self, protocol_factory, host=host, port=port, *args, **kwargs)
+asyncio.AbstractEventLoop.create_server = _cloud_safe_create_server
+
 from contextlib import asynccontextmanager
 from typing import List, Optional
 
