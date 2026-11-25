@@ -377,7 +377,7 @@ async def verify_claim_get(
     top_k_rerank: Optional[int] = TOP_K_RERANK,
 ):
     """
-    GET method for claim verification via URL query parameter.
+    GET method to verify a claim via URL query parameter.
     Example: /api/verify?claim=The+Eiffel+Tower+is+in+Paris
     """
     return await verify_claim(
