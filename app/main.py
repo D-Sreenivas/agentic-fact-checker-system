@@ -370,6 +370,25 @@ async def verify_claim(payload: FactCheckRequest):
     )
 
 
+@app.get("/api/verify", response_model=FactCheckResponse, tags=["Verification"])
+async def verify_claim_get(
+    claim: str,
+    top_k_retrieval: Optional[int] = TOP_K_RETRIEVAL,
+    top_k_rerank: Optional[int] = TOP_K_RERANK,
+):
+    """
+    GET method for claim verification via URL query parameter.
+    Example: /api/verify?claim=The+Eiffel+Tower+is+in+Paris
+    """
+    return await verify_claim(
+        FactCheckRequest(
+            claim=claim,
+            top_k_retrieval=top_k_retrieval,
+            top_k_rerank=top_k_rerank,
+        )
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
