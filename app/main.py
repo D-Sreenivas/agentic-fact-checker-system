@@ -137,7 +137,7 @@ class ExampleClaim(BaseModel):
 # API Endpoints
 # ---------------------------------------------------------
 
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse, include_in_schema=False)
 async def serve_ui():
     """Serves the interactive web interface."""
     index_file = os.path.join(STATIC_DIR, "index.html")
