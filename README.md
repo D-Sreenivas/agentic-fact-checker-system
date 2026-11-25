@@ -27,7 +27,7 @@ LLM_MODEL=gemini-3.8-flash
 Install dependencies:
 
 ```powershell
-.\venv\Scripts\python.exe -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ---
@@ -37,7 +37,7 @@ Install dependencies:
 Run the FastAPI server with Uvicorn:
 
 ```powershell
-.\venv\Scrip-ts\python.exe m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 - **Interactive Web Dashboard:** [http://127.0.0.1:8000](http://127.0.0.1:8000)
@@ -95,5 +95,5 @@ Fetches curated test claims.
 Verify claims directly from the terminal:
 
 ```powershell
-.\venv\Scripts\python.exe src\pipeline.py
+python src\pipeline.py
 ```
