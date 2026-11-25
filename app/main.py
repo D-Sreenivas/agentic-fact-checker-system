@@ -142,6 +142,19 @@ async def lifespan(app: FastAPI):
     else:
         print("[FASTAPI STARTUP] Lazy loading enabled. Models will load on first request.")
 
+    print("\n" + "=" * 72)
+    print("🚀  AGENTIC FACT CHECKER REST API READY")
+    print("=" * 72)
+    print("  🌐 Web Interface:      http://127.0.0.1:8000/")
+    print("  📖 Interactive Swagger: http://127.0.0.1:8000/docs")
+    print("  📄 ReDoc Documentation: http://127.0.0.1:8000/redoc")
+    print("\n  REST API METHODS & ROUTES:")
+    print("    [GET]   /api/health       -> System status & active AI models")
+    print("    [GET]   /api/examples     -> Curated sample verification claims")
+    print("    [GET]   /api/verify       -> Verify claim via query param (?claim=...)")
+    print("    [POST]  /api/verify       -> Verify claim via JSON payload")
+    print("=" * 72 + "\n")
+
     yield
 
     print("[FASTAPI SHUTDOWN] Shutting down agent service...")
