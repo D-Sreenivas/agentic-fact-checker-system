@@ -14,7 +14,20 @@ def fact_check_with_llm(claim, evidence):
     global client
     if client is None:
         if not GEMINI_API_KEY:
-            return "ERROR: GEMINI_API_KEY is not set in .env file."
+            return """VERDICT:
+UNCERTAIN
+
+CONFIDENCE:
+0
+
+EXPLANATION:
+GEMINI_API_KEY is not configured on Render. Please go to Render Dashboard -> Environment and add GEMINI_API_KEY.
+
+EVIDENCE_USED:
+None
+
+CITATIONS:
+None"""
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
         except Exception as e:
