@@ -59,10 +59,76 @@ from src.config import (
 agent_instance: Optional[FactCheckingAgent] = None
 
 
+async def _pipe_stream(reader, writer):
+    """Pipes raw bytes between two streams."""
+    try:
+        while True:
+            data = await reader.read(65536)
+            if not data:
+                break
+            writer.write(data)
+            await writer.drain()
+    except Exception:
+        pass
+    finally:
+        try:
+            writer.close()
+            await writer.wait_closed()
+        except Exception:
+            pass
+
+
+async def _proxy_client_handler(client_reader, client_writer, target_port=8000):
+    """Bridges incoming cloud requests to internal 127.0.0.1 listener."""
+    try:
+        remote_reader, remote_writer = await asyncio.open_connection("127.0.0.1", target_port)
+    except Exception:
+        try:
+            client_writer.close()
+        except Exception:
+            pass
+        return
+    await asyncio.gather(
+        _pipe_stream(client_reader, remote_writer),
+        _pipe_stream(remote_reader, client_writer),
+        return_exceptions=True,
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler."""
     global agent_instance
+
+    # -------------------------------------------------------------
+    # Render / Cloud Network Bridge:
+    # If Uvicorn was invoked with '--host 127.0.0.1 --port 8000',
+    # Render's external port scanner on 0.0.0.0:$PORT will fail.
+    # We automatically bridge 0.0.0.0:$PORT -> 127.0.0.1:8000.
+    # -------------------------------------------------------------
+    proxy_servers = []
+    target_ports = set()
+    if os.getenv("PORT"):
+        try:
+            target_ports.add(int(os.environ["PORT"]))
+        except ValueError:
+            pass
+    if os.getenv("RENDER"):
+        target_ports.add(10000)
+
+    for p in target_ports:
+        if p != 8000:
+            try:
+                srv = await asyncio.start_server(
+                    lambda r, w, port=8000: _proxy_client_handler(r, w, port),
+                    host="0.0.0.0",
+                    port=p,
+                )
+                proxy_servers.append(srv)
+                print(f"[RENDER BRIDGE] Successfully opened 0.0.0.0:{p} -> forwarding to 127.0.0.1:8000")
+            except Exception as e:
+                print(f"[RENDER BRIDGE NOTE] Port {p} bridge: {e}")
+
     # On resource-constrained environments (like Render Free 512MB),
     # lazy loading ensures the server boots and binds port instantly without OOM.
     preload = os.getenv("PRELOAD_MODELS", "false").lower() in ("true", "1")
@@ -75,8 +141,16 @@ async def lifespan(app: FastAPI):
             print(f"[FASTAPI STARTUP WARNING] Failed to preload agent: {e}")
     else:
         print("[FASTAPI STARTUP] Lazy loading enabled. Models will load on first request.")
+
     yield
+
     print("[FASTAPI SHUTDOWN] Shutting down agent service...")
+    for srv in proxy_servers:
+        try:
+            srv.close()
+            await srv.wait_closed()
+        except Exception:
+            pass
 
 
 app = FastAPI(
